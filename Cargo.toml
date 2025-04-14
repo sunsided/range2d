@@ -1,6 +1,9 @@
 [package]
 name = "range2d"
+description = "An iterator for traversing a 2D rectangular coordinate space."
+authors = ["Markus Mayer <widemeadows@gmail.com>"]
+keywords = ["grid", "iterator"]
+categories = ["computer-vision", "game-development", "algorithms"]
+license = "EUPL-1.2"
 version = "0.1.0"
 edition = "2024"
-
-[dependencies]
