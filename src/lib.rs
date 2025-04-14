@@ -58,7 +58,31 @@ pub struct Range2D<I: Idx = usize> {
 }
 
 impl<I: Idx> Range2D<I> {
-    /// Creates a new iterator over the given coordinate rectangle.
+    /// Creates a new 2D range iterator over the specified rectangular coordinate space.
+    ///
+    /// The iterator traverses the rectangle defined by `y_range` and `x_range` in row-major order,
+    /// yielding `(y, x)` coordinate pairs. Rows are iterated from top (lower bound) to bottom (upper bound),
+    /// and within each row the columns are iterated from left (lower bound) to right (upper bound).
+    ///
+    /// # Parameters
+    ///
+    /// - `y_range`: The range of y-coordinates (vertical dimension).
+    /// - `x_range`: The range of x-coordinates (horizontal dimension).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use range2d::Range2D;
+    ///
+    /// // Create a 2x3 coordinate grid.
+    /// let iter = Range2D::new(0..2, 0..3);
+    /// let coords: Vec<_> = iter.collect();
+    ///
+    /// assert_eq!(coords, vec![
+    ///     (0, 0), (0, 1), (0, 2),
+    ///     (1, 0), (1, 1), (1, 2),
+    /// ]);
+    /// ```
     pub fn new(y_range: Range<I>, x_range: Range<I>) -> Self {
         let height = y_range.end.saturating_sub(y_range.start).to_usize();
         let width = x_range.end.saturating_sub(x_range.start).to_usize();
@@ -72,8 +96,89 @@ impl<I: Idx> Range2D<I> {
         }
     }
 
+    /// Creates a new 2D range iterator with the full coordinate rectangle starting from zero.
+    ///
+    /// This is a convenience method that creates an iterator spanning from 0 to the specified
+    /// `height` and from 0 to the specified `width`. It is equivalent to:
+    /// `Range2D::new(I::zero()..height, I::zero()..width)`
+    ///
+    /// # Parameters
+    ///
+    /// - `height`: The total number of rows.
+    /// - `width`: The total number of columns.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use range2d::Range2D;
+    ///
+    /// // Create a 2x3 grid starting at (0,0)
+    /// let iter = Range2D::full(2, 3);
+    /// let coords: Vec<_> = iter.collect();
+    ///
+    /// assert_eq!(coords, vec![
+    ///     (0, 0), (0, 1), (0, 2),
+    ///     (1, 0), (1, 1), (1, 2),
+    /// ]);
+    /// ```
     pub fn full(height: I, width: I) -> Self {
         Self::new(I::zero()..height, I::zero()..width)
+    }
+
+    /// Creates a new 2D range iterator representing a square coordinate region.
+    ///
+    /// This convenience method creates an iterator where both ranges are equal.
+    /// It is equivalent to calling `Range2D::new(range, range)`.
+    ///
+    /// # Parameters
+    ///
+    /// - `range`: The range of the square, setting both the number of rows and columns.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use range2d::Range2D;
+    ///
+    /// // Create a 3x3 grid.
+    /// let iter = Range2D::square(0..3);
+    /// let coords: Vec<_> = iter.collect();
+    ///
+    /// assert_eq!(coords, vec![
+    ///     (0, 0), (0, 1), (0, 2),
+    ///     (1, 0), (1, 1), (1, 2),
+    ///     (2, 0), (2, 1), (2, 2),
+    /// ]);
+    /// ```
+    pub fn square(range: Range<I>) -> Self {
+        Self::new(range.clone(), range)
+    }
+
+    /// Creates a new 2D range iterator representing a square coordinate region.
+    ///
+    /// This convenience method creates an iterator where both the height and width are equal to the
+    /// provided `range` value. It is equivalent to calling `Range2D::full(range, range)`.
+    ///
+    /// # Parameters
+    ///
+    /// - `range`: The size of the square, setting both the number of rows and columns.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use range2d::Range2D;
+    ///
+    /// // Create a 3x3 grid.
+    /// let iter = Range2D::full_square(3);
+    /// let coords: Vec<_> = iter.collect();
+    ///
+    /// assert_eq!(coords, vec![
+    ///     (0, 0), (0, 1), (0, 2),
+    ///     (1, 0), (1, 1), (1, 2),
+    ///     (2, 0), (2, 1), (2, 2),
+    /// ]);
+    /// ```
+    pub fn full_square(range: I) -> Self {
+        Self::full(range, range)
     }
 
     /// Resets the iterator to its full original range.
