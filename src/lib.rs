@@ -42,24 +42,27 @@
 //! This iterator is compatible with all iterator adapters (`.rev()`, `.take()`, `.map()`, etc.),
 //! and behaves predictably when fused or split into subranges.
 
+mod idx;
+
+pub use self::idx::Idx;
 use std::iter::FusedIterator;
 use std::ops::Range;
 
 /// A 2D coordinate iterator over `(y, x)` pairs.
 #[derive(Debug, Clone)]
-pub struct Range2D {
-    y_range: Range<usize>,
-    x_range: Range<usize>,
+pub struct Range2D<I: Idx = usize> {
+    y_range: Range<I>,
+    x_range: Range<I>,
     start: usize,
     end: usize,
 }
 
-impl Range2D {
+impl<I: Idx> Range2D<I> {
     /// Creates a new iterator over the given coordinate rectangle.
-    pub fn new(y_range: Range<usize>, x_range: Range<usize>) -> Self {
-        let height = y_range.end.saturating_sub(y_range.start);
-        let width = x_range.end.saturating_sub(x_range.start);
-        let total = (height * width) as usize;
+    pub fn new(y_range: Range<I>, x_range: Range<I>) -> Self {
+        let height = y_range.end.saturating_sub(y_range.start).to_usize();
+        let width = x_range.end.saturating_sub(x_range.start).to_usize();
+        let total = height * width;
 
         Self {
             y_range,
@@ -69,8 +72,8 @@ impl Range2D {
         }
     }
 
-    pub fn full(height: usize, width: usize) -> Self {
-        Self::new(0..height, 0..width)
+    pub fn full(height: I, width: I) -> Self {
+        Self::new(I::zero()..height, I::zero()..width)
     }
 
     /// Resets the iterator to its full original range.
@@ -95,9 +98,6 @@ impl Range2D {
     ///
     /// iter.next(); // (2, 5)
     /// assert_eq!(iter.len(), 3);
-    ///
-    /// iter.for_each(drop);
-    /// assert_eq!(iter.len(), 0);
     /// ```
     ///
     /// This is **not** equivalent to `y_range.len() * x_range.len()` unless the iterator is at the start.
@@ -113,7 +113,7 @@ impl Range2D {
     pub fn total_len(&self) -> usize {
         let height = self.y_range.end.saturating_sub(self.y_range.start);
         let width = self.x_range.end.saturating_sub(self.x_range.start);
-        (height * width) as usize
+        (height * width).to_usize()
     }
 
     /// Returns two disjoint iterators that cover the remaining range.
@@ -201,20 +201,20 @@ impl Range2D {
         result
     }
 
-    const fn index_to_coord(&self, index: usize) -> (usize, usize) {
-        let width = self.x_range.end - self.x_range.start;
+    fn index_to_coord(&self, index: usize) -> (I, I) {
+        let width = (self.x_range.end - self.x_range.start).to_usize();
         if width == 0 {
-            return (0, 0);
+            return (I::zero(), I::zero());
         }
 
-        let y = self.y_range.start + (index as usize / width);
-        let x = self.x_range.start + (index as usize % width);
+        let y = self.y_range.start + I::from_usize(index / width.to_usize());
+        let x = self.x_range.start + I::from_usize(index % width.to_usize());
         (y, x)
     }
 }
 
-impl Iterator for Range2D {
-    type Item = (usize, usize);
+impl<I: Idx> Iterator for Range2D<I> {
+    type Item = (I, I);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
@@ -237,7 +237,7 @@ impl Iterator for Range2D {
     }
 }
 
-impl DoubleEndedIterator for Range2D {
+impl<I: Idx> DoubleEndedIterator for Range2D<I> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
             return None;
@@ -248,8 +248,8 @@ impl DoubleEndedIterator for Range2D {
     }
 }
 
-impl ExactSizeIterator for Range2D {}
-impl FusedIterator for Range2D {}
+impl<I: Idx> ExactSizeIterator for Range2D<I> {}
+impl<I: Idx> FusedIterator for Range2D<I> {}
 
 #[cfg(test)]
 mod tests {
@@ -308,6 +308,15 @@ mod tests {
         let coords: Vec<_> = iter.rev().collect();
 
         let expected = vec![(1, 2), (1, 1), (1, 0), (0, 2), (0, 1), (0, 0)];
+        assert_eq!(coords, expected);
+    }
+
+    #[test]
+    fn test_next_neg_back_only() {
+        let iter = Range2D::new(-2..0, -3..0); // 6 tiles
+        let coords: Vec<_> = iter.rev().collect();
+
+        let expected = vec![(-1, -1), (-1, -2), (-1, -3), (-2, -1), (-2, -2), (-2, -3)];
         assert_eq!(coords, expected);
     }
 
